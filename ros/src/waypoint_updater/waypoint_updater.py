@@ -85,6 +85,19 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
+        # set waypoint speed smoothly
+        # if no tl set nextx waypoints to target speed
+        # current vel = , current index = , target speed of current_index = current_vel
+        # target vel = 0.0, target index =
+        # total_stop_distance = distance (current_index, target_index)
+        # if stopline too close dont do anything
+        # for i in range indices
+        # current_wp_distance = .
+        # current_target_vel = current_vel * current_wp_distance / total_remaining_wp_distance
+        # if decel too big adapt
+        # total_remaining_wp_distance =
+        # current_vel =
+        # current-index =
         pass
 
     def obstacle_cb(self, msg):

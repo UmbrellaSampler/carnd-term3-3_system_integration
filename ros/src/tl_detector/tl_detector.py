@@ -151,3 +151,7 @@ if __name__ == '__main__':
         TLDetector()
     except rospy.ROSInterruptException:
         rospy.logerr('Could not start traffic node.')
+
+#TODO
+#1. find out index for tl
+#2. publish stub message until time, then empty stub message
