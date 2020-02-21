@@ -50,7 +50,7 @@ class Controller(object):
 
             current_time = rospy.Time.now()
             sample_time = (current_time - self.previous_time).to_sec()
-            self.error = self.average_from_vector(proposed_linear) - self.average_from_vector(current_linear)
+            self.error = proposed_linear_v - current_linear_v
             acceleration = self.pid.step(self.error, sample_time)
             self.previous_time = current_time
             # rospy.logwarn("Acceleration: %s ", acceleration)
