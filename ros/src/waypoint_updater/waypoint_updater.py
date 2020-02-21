@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
 
 import math
 
@@ -30,6 +31,7 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
@@ -86,6 +88,8 @@ class WaypointUpdater(object):
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
         # set waypoint speed smoothly
+        stop_waypoint = msg.data
+        rospy.logwarn("Stop Waypoint: %s ", stop_waypoint)
         # if no tl set nextx waypoints to target speed
         # current vel = , current index = , target speed of current_index = current_vel
         # target vel = 0.0, target index =
@@ -98,7 +102,6 @@ class WaypointUpdater(object):
         # total_remaining_wp_distance =
         # current_vel =
         # current-index =
-        pass
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
