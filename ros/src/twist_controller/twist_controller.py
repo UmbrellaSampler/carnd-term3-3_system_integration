@@ -21,17 +21,20 @@ class Controller(object):
 
         self.error = 0.0
         self.previous_time = rospy.Time.now()
-        # self.low_pass = LowPassFilter(tau, ts)
+        self.low_pass_acceleration = LowPassFilter(1.0, 1.0)
+        self.low_pass_steering = LowPassFilter(1.0, 1.0)
+
+        self.torque_factor = (vehicle_mass + fuel_capacity * GAS_DENSITY) * wheel_radius
 
     def control(self, proposed_linear, proposed_angular, current_linear, dbw_enabled):
         # TODO: Change the arg, kwarg list to suit your needs
         # tw = TwistStamped()
         # tw.twist.linear.x
-        rospy.logwarn("Controlling")
-        rospy.logwarn("dbw_enabled: %s", str(dbw_enabled))
+        # rospy.logwarn("Controlling")
+        # rospy.logwarn("dbw_enabled: %s", str(dbw_enabled))
 
         if dbw_enabled.data is True:
-            rospy.logwarn("enabled is true")
+            # rospy.logwarn("enabled is true")
 
             #Get control inputs
             proposed_linear_v = sqrt(proposed_linear.x * proposed_linear.x + proposed_linear.y * proposed_linear.y +
@@ -42,11 +45,12 @@ class Controller(object):
                                     current_linear.z * current_linear.z)
 
             steer = self.yaw_controller.get_steering(proposed_linear_v, proposed_yaw_rate, current_linear_v)
+            steer = self.low_pass_steering.filt(steer)
 
-            rospy.logwarn("proposed_linear_v: %s ", proposed_linear_v)
-            rospy.logwarn("proposed_yaw_rate: %s ", proposed_yaw_rate)
-            rospy.logwarn("current_linear_v: %s ", current_linear_v)
-            rospy.logwarn("steer: %s", str(steer))
+            # rospy.logwarn("proposed_linear_v: %s ", proposed_linear_v)
+            # rospy.logwarn("proposed_yaw_rate: %s ", proposed_yaw_rate)
+            # rospy.logwarn("current_linear_v: %s ", current_linear_v)
+            # rospy.logwarn("steer: %s", str(steer))
 
             current_time = rospy.Time.now()
             sample_time = (current_time - self.previous_time).to_sec()
@@ -63,17 +67,18 @@ class Controller(object):
                 if throttle > 1.0:
                     throttle = 1.0
                 brake = 0.0
-                rospy.logwarn("Accelerating")
+                # rospy.logwarn("Accelerating")
             else:
-                brake = - acceleration
-                if brake > 1.0:
+                brake = - acceleration * self.torque_factor
+                if brake > 1.0 or current_linear_v < 0.2:
                     brake = 1.0
                 throttle = 0.0
-                rospy.logwarn("Braking")
+                # rospy.logwarn("Braking")
 
             return throttle, brake, steer
 
         else:
+            self.pid.reset()
             self.error = 0.0
             # Return throttle, brake, steer
             return 1., 0., 0.
