@@ -6,6 +6,7 @@ from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
 import math
+import copy
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -41,6 +42,10 @@ class WaypointUpdater(object):
         self.next_waypoints = None
         self.map_waypoints = None
         self.pose = None
+        self.next_index = -1
+        self.stop_index = None
+        self.stop_index_update = None
+        self.stop_active = False
 
         rospy.spin()
 
@@ -54,54 +59,121 @@ class WaypointUpdater(object):
         next_index = -1
         if self.map_waypoints is None:
             rospy.logwarn("No Waypoints given...")
-            return None
+            self.next_index = -1
+            return
         for i in range(len(self.map_waypoints)):
             current_distance = self.pose_distance(i)
             if current_distance < min_dist:
                 min_dist = current_distance
                 next_index = i
-        rospy.loginfo("index of next wp: %s", next_index)
+        # rospy.logwarn("index of next wp: %s", next_index)
+        # rospy.logwarn("closest wp x: %s"), str(self.map_waypoints[next_index].)
+
+        # rospy.logwarn("vel next wp: %s", self.get_waypoint_velocity(self.map_waypoints[next_index]))
         return next_index
 
-#
-    def pose_cb(self, msg):
-        self.pose = msg.pose
-        next_index = self.find_next_waypoint()
-        if next_index is None or next_index is -1:
-            return
+    def is_stop_active(self):
+        now = rospy.Time.now()
+        if self.stop_index_update is not None:
+            if now - self.stop_index_update < rospy.Duration(0.5):
+                return True
+        return False
+
+    def update_next_waypoints(self):
+        # if not self.stop_active or self.stop_index < self.next_index:
+        # rospy.logwarn("Updating waypoints without stop:")
+        # rospy.logwarn("stop_active: %s", str(self.stop_active))
+        # rospy.logwarn("stop_index: %s", str(self.stop_index))
+        # rospy.logwarn("start next_index: %s", str(self.next_index))
         self.next_waypoints = []
-        if next_index >= 0:
-            for i in range(0, LOOKAHEAD_WPS):
-                if next_index >= len(self.map_waypoints):
-                    next_index = 0
-                self.next_waypoints.append(self.map_waypoints[next_index])
-                next_index += 1
+        for i in range(0, LOOKAHEAD_WPS):
+
+            # if next_index >= len(self.map_waypoints):
+            #     next_index = 0
+            # self.next_waypoints.append(copy.deepcopy(self.map_waypoints[self.next_index + i]))
+            self.next_waypoints.append(self.map_waypoints[self.next_index + i])
+
+        # rospy.logwarn("end next_index: %s", str(self.next_index + i))
+        #
+        # else:
+        #     #get vehicle vel.
+        #     rospy.logwarn("Updating waypoints with stop:")
+        #     current_wp_vel = self.get_waypoint_velocity(self.map_waypoints[next_index])
+        #     # if self.next_waypoints is not None and len(self.next_waypoints) > 0:
+        #     #     current_wp_vel = self.get_waypoint_velocity(self.next_waypoints[0])
+        #     self.next_waypoints = []
+        #     # target speed of current_index = current_vel
+        #     # target vel = 0.0, target index =
+        #     total_stop_distance = self.distance(self.map_waypoints, next_index, self.stop_index)
+        #     number_of_waypoints_to_stop = self.stop_index - self.next_index
+        #     # rospy.logwarn("current_wp_vel: %s", current_wp_vel)
+        #     # rospy.logwarn("stop_waypoint: %s", self.stop_index)
+        #     # rospy.logwarn("next_index: %s", self.next_index)
+        #     # rospy.logwarn("Total stop distance: %s", total_stop_distance)
+        #     # rospy.logwarn("number_of_waypoints_to_stop: %s", number_of_waypoints_to_stop)
+        #
+        #     for i in range(0, LOOKAHEAD_WPS):
+        #         # if next_index >= len(self.map_waypoints):
+        #         #     next_index = 0
+        #         self.next_waypoints.append(copy.deepcopy(self.map_waypoints[next_index + i]))
+        #         if next_index + i <= self.stop_index:
+        #             remaining_distance_to_stop = self.distance(self.map_waypoints, next_index + i, self.stop_index)
+        #             waypoint_vel = 0.0
+        #             if float(total_stop_distance > 0.1):
+        #                 waypoint_vel = float(current_wp_vel) * float(remaining_distance_to_stop) / float(total_stop_distance)
+        #             self.set_waypoint_velocity(self.next_waypoints, i, waypoint_vel)
+        #         # rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
+        #         # rospy.logwarn("waypoint_vel: %s", self.get_waypoint_velocity(self.next_waypoints[i]))
+
+        # rospy.logwarn("Number of final waypoints: %s", str(len(self.next_waypoints)))
         lane = Lane()
         lane.waypoints = self.next_waypoints
-        rospy.logdebug("Number of final waypoints: %s", str(len(self.next_waypoints)))
+
         self.final_waypoints_pub.publish(lane)
+
+    def pose_cb(self, msg):
+        start = rospy.Time.now()
+        self.pose = msg.pose
+        next_index = self.find_next_waypoint()
+        is_stop_active = self.is_stop_active()
+        rospy.logwarn("Calculated next_index: %s, prev index: %s", next_index, self.next_index)
+        # rospy.logwarn("is_stop_active: %s", is_stop_active)
+
+        if next_index is None or next_index < 0:
+            rospy.logwarn("Not updating waypoints:")
+            return
+
+        if self.next_index - next_index < 0: #or self.stop_active is None or self.stop_active is not is_stop_active:
+            rospy.logwarn("updating waypoints: ")
+            self.stop_active = is_stop_active
+            self.next_index = next_index
+            self.update_next_waypoints()
+
+        else:
+            rospy.logwarn("skip update waypoints: ")
+
+        end = rospy.Time.now()
+        duration = (end-start).to_sec()
+        rospy.logwarn("Duration: %s", str(duration))
 
     def waypoints_cb(self, waypoints):
         rospy.logwarn("Setting waypoints...")
         self.map_waypoints = waypoints.waypoints
 
+    def print_waypoints(self):
+        rospy.logwarn("Next Waypoints:")
+        for i in range(len(self.next_waypoints)):
+            rospy.logwarn(self.next_waypoints[i].twist.twist.linear.x)
+
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
         # set waypoint speed smoothly
         stop_waypoint = msg.data
-        rospy.logwarn("Stop Waypoint: %s ", stop_waypoint)
-        # if no tl set nextx waypoints to target speed
-        # current vel = , current index = , target speed of current_index = current_vel
-        # target vel = 0.0, target index =
-        # total_stop_distance = distance (current_index, target_index)
-        # if stopline too close dont do anything
-        # for i in range indices
-        # current_wp_distance = .
-        # current_target_vel = current_vel * current_wp_distance / total_remaining_wp_distance
-        # if decel too big adapt
-        # total_remaining_wp_distance =
-        # current_vel =
-        # current-index =
+        now = rospy.Time.now()
+        # if self.stop_index is None or self.stop_index is not stop_waypoint:
+        #     rospy.logwarn("Setting stop in waypoints:")
+        self.stop_index = stop_waypoint
+        self.stop_index_update = now
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
@@ -116,7 +188,7 @@ class WaypointUpdater(object):
     # distance between two waypoints given their indices
     def distance(self, waypoints, wp1, wp2):
         dist = 0
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
         for i in range(wp1, wp2+1):
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
