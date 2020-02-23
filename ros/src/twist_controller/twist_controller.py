@@ -17,14 +17,16 @@ class Controller(object):
         min_speed_yaw = 0.1
         self.yaw_controller = YawController(wheel_base, steer_ratio, min_speed_yaw, max_lat_accel, max_steer_angle)
 
-        self.pid = PID(0.2, 0.001, 3.5, decel_limit, accel_limit)
+        self.pid = PID(0.2, 0.001, 0.0, decel_limit, accel_limit)
 
         self.error = 0.0
         self.previous_time = rospy.Time.now()
-        self.low_pass_acceleration = LowPassFilter(1.0, 1.0)
+        self.low_pass_acceleration = LowPassFilter(0.5, 0.05)
         self.low_pass_steering = LowPassFilter(1.0, 1.0)
 
-        self.torque_factor = (vehicle_mass + fuel_capacity * GAS_DENSITY) * wheel_radius
+        self.torque_factor = vehicle_mass * wheel_radius
+        self.brake_deadband = brake_deadband
+        rospy.logwarn("torque_factor: %s", str(self.torque_factor))
 
     def control(self, proposed_linear, proposed_angular, current_linear, dbw_enabled):
         # TODO: Change the arg, kwarg list to suit your needs
@@ -56,6 +58,7 @@ class Controller(object):
             sample_time = (current_time - self.previous_time).to_sec()
             self.error = proposed_linear_v - current_linear_v
             acceleration = self.pid.step(self.error, sample_time)
+            acceleration = self.low_pass_acceleration.filt(acceleration)
             self.previous_time = current_time
             # rospy.logwarn("Acceleration: %s ", acceleration)
             # rospy.logwarn("Error: %s, Sample time: %s", str(self.error), str(sample_time))
@@ -69,9 +72,12 @@ class Controller(object):
                 brake = 0.0
                 # rospy.logwarn("Accelerating")
             else:
-                brake = - acceleration * self.torque_factor
-                if brake > 1.0 or current_linear_v < 0.2:
-                    brake = 1.0
+                if abs(proposed_linear_v) < 0.001 and abs(current_linear_v) < 0.1:
+                    brake = 700.0
+                elif - acceleration < self.brake_deadband:
+                    brake = 0.0
+                else:
+                    brake = min(-acceleration * self.torque_factor, 700.0)
                 throttle = 0.0
                 # rospy.logwarn("Braking")
 
