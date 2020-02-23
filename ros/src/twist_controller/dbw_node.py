@@ -55,8 +55,8 @@ class DBWNode(object):
 
         # TODO: Create `Controller` object
 
-        self.controller = Controller(vehicle_mass, fuel_capacity, brake_deadband, decel_limit, accel_limit,
-                                     wheel_radius, wheel_base, steer_ratio, max_lat_accel, max_steer_angle)
+        self.controller = Controller(vehicle_mass=vehicle_mass, fuel_capacity=fuel_capacity, brake_deadband=brake_deadband, decel_limit=decel_limit, accel_limit=accel_limit,
+                                     wheel_radius=wheel_radius, wheel_base=wheel_base, steer_ratio=steer_ratio, max_lat_accel=max_lat_accel, max_steer_angle=max_steer_angle)
         self.current_velocity = None
         self.twist_cmd = None
         self.dbw_enabled = None
@@ -82,20 +82,20 @@ class DBWNode(object):
         rate = rospy.Rate(50)  # 50Hz
         while not rospy.is_shutdown():
 
-            rospy.logwarn("looping")
+            # rospy.logwarn("looping")
             # TODO: Get predicted throttle, brake, and steering using `twist_controller`
             # You should only publish the control commands if dbw is enabled
             if self.current_velocity is not None and self.twist_cmd is not None and self.dbw_enabled is not None:
-                rospy.logwarn("All inputs there")
+                # rospy.logwarn("All inputs there")
                 throttle, brake, steering = self.controller.control(self.twist_cmd.twist.linear,
                                                                 self.twist_cmd.twist.angular,
                                                                 self.current_velocity.twist.linear,
                                                                 self.dbw_enabled)
                 if self.dbw_enabled.data is True:
                     self.publish(throttle, brake, steering)
-                    rospy.logwarn("throttle: %s", str(throttle))
-                    rospy.logwarn("brake: %s", str(brake))
-                    rospy.logwarn("steer: %s", str(steering))
+                    # rospy.logwarn("throttle: %s", str(throttle))
+                    # rospy.logwarn("brake: %s", str(brake))
+                    # rospy.logwarn("steer: %s", str(steering))
 
 
             rate.sleep()
