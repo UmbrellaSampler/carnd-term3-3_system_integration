@@ -65,16 +65,17 @@ class Controller(object):
             # rospy.logwarn("Proposed Speed: %s, Current Speed: %s", str(self.average_from_vector(proposed_linear)),
             #               str(self.average_from_vector(current_linear)))
 
-            if acceleration > 0:
+            if abs(proposed_linear_v) < 0.01 and abs(current_linear_v) < 1.0:
+                brake = 700.0
+                throttle = 0.0
+            elif acceleration > 0:
                 throttle = acceleration
                 if throttle > 1.0:
                     throttle = 1.0
                 brake = 0.0
                 # rospy.logwarn("Accelerating")
             else:
-                if abs(proposed_linear_v) < 0.001 and abs(current_linear_v) < 1.0:
-                    brake = 700.0
-                elif - acceleration < self.brake_deadband:
+                if - acceleration < self.brake_deadband:
                     brake = 0.0
                 else:
                     brake = min(-acceleration * self.torque_factor, 700.0)
