@@ -72,7 +72,7 @@ class Controller(object):
                 brake = 0.0
                 # rospy.logwarn("Accelerating")
             else:
-                if abs(proposed_linear_v) < 0.001 and abs(current_linear_v) < 0.1:
+                if abs(proposed_linear_v) < 0.001 and abs(current_linear_v) < 1.0:
                     brake = 700.0
                 elif - acceleration < self.brake_deadband:
                     brake = 0.0

@@ -23,9 +23,9 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 50 # Number of waypoints we will publish. You can change this number
 STOP_LOOKAHEAD_WPS = 50
-EXTRA_BUFFER_STOP = 4
+EXTRA_BUFFER_STOP = 8
 MAX_ACCELERATION = 0.5
 
 
@@ -103,6 +103,7 @@ class WaypointUpdater(object):
         # rospy.logwarn("number_of_waypoints_to_stop: %s", number_of_waypoints_to_stop)
 
         slowed_wp = []
+        self.next_waypoints = []
 
         for i in range(0, LOOKAHEAD_WPS):
             # if next_index >= len(self.map_waypoints):
@@ -112,8 +113,9 @@ class WaypointUpdater(object):
             current_wp.pose = self.map_waypoints[self.next_index + i].pose
 
             waypoint_vel = self.get_waypoint_velocity(self.map_waypoints[self.next_index + i])
-            if self.next_index + i <= self.stop_index - EXTRA_BUFFER_STOP:
+            if self.next_index + i < self.stop_index - EXTRA_BUFFER_STOP:
                 remaining_distance_to_stop = self.distance(self.map_waypoints, self.next_index + i, self.stop_index - EXTRA_BUFFER_STOP)
+                rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
 
                 if float(remaining_distance_to_stop > 1.0):
                     waypoint_vel = min(waypoint_vel, math.sqrt(2*MAX_ACCELERATION*remaining_distance_to_stop))
@@ -121,9 +123,11 @@ class WaypointUpdater(object):
                     waypoint_vel = 0.0
                 if self.velocity is not None:
                     waypoint_vel = min(waypoint_vel, self.velocity)
+            elif self.next_index + i <= self.stop_index:
+                waypoint_vel = 0.0
             current_wp.twist.twist.linear.x = waypoint_vel
-            self.next_waypoints[i] = current_wp
-            rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
+            self.next_waypoints.append(current_wp)
+
             rospy.logwarn("waypoint_vel: %s", self.get_waypoint_velocity(self.next_waypoints[i]))
 
     def update_next_waypoints(self):
