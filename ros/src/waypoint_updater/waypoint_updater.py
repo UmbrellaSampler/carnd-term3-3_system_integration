@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
@@ -24,6 +24,9 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+STOP_LOOKAHEAD_WPS = 50
+EXTRA_BUFFER_STOP = 4
+MAX_ACCELERATION = 0.5
 
 
 class WaypointUpdater(object):
@@ -31,6 +34,7 @@ class WaypointUpdater(object):
         rospy.init_node('waypoint_updater')
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
 
@@ -46,6 +50,7 @@ class WaypointUpdater(object):
         self.stop_index = None
         self.stop_index_update = None
         self.stop_active = False
+        self.velocity = None
 
         rospy.spin()
 
@@ -79,55 +84,107 @@ class WaypointUpdater(object):
                 return True
         return False
 
+    def slow_down_to_stop(self):
+        # get vehicle vel.
+        rospy.logwarn("Updating waypoints with stop:")
+        current_wp_vel = self.get_waypoint_velocity(self.map_waypoints[self.next_index])
+        # if self.next_waypoints is not None and len(self.next_waypoints) > 0:
+        #     current_wp_vel = self.get_waypoint_velocity(self.next_waypoints[0])
+        # target speed of current_index = current_vel
+        # target vel = 0.0, target index =
+        number_of_waypoints_to_stop = self.stop_index - EXTRA_BUFFER_STOP - self.next_index
+        total_stop_distance = self.distance(self.map_waypoints, self.next_index, self.stop_index - EXTRA_BUFFER_STOP)
+
+
+        # rospy.logwarn("current_wp_vel: %s", current_wp_vel)
+        # rospy.logwarn("stop_waypoint: %s", self.stop_index)
+        # rospy.logwarn("next_index: %s", self.next_index)
+        # rospy.logwarn("Total stop distance: %s", total_stop_distance)
+        # rospy.logwarn("number_of_waypoints_to_stop: %s", number_of_waypoints_to_stop)
+
+        slowed_wp = []
+
+        for i in range(0, LOOKAHEAD_WPS):
+            # if next_index >= len(self.map_waypoints):
+            #     next_index = 0
+
+            current_wp = Waypoint()
+            current_wp.pose = self.map_waypoints[self.next_index + i].pose
+
+            waypoint_vel = self.get_waypoint_velocity(self.map_waypoints[self.next_index + i])
+            if self.next_index + i <= self.stop_index - EXTRA_BUFFER_STOP:
+                remaining_distance_to_stop = self.distance(self.map_waypoints, self.next_index + i, self.stop_index - EXTRA_BUFFER_STOP)
+
+                if float(remaining_distance_to_stop > 1.0):
+                    waypoint_vel = min(waypoint_vel, math.sqrt(2*MAX_ACCELERATION*remaining_distance_to_stop))
+                else:
+                    waypoint_vel = 0.0
+                if self.velocity is not None:
+                    waypoint_vel = min(waypoint_vel, self.velocity)
+            current_wp.twist.twist.linear.x = waypoint_vel
+            self.next_waypoints[i] = current_wp
+            rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
+            rospy.logwarn("waypoint_vel: %s", self.get_waypoint_velocity(self.next_waypoints[i]))
+
     def update_next_waypoints(self):
-        if not self.stop_active or self.stop_index < self.next_index or self.stop_index > self.next_index + 200:
+
+        self.next_waypoints = self.map_waypoints[self.next_index:self.next_index + LOOKAHEAD_WPS]
+
+        if not self.stop_active or self.stop_index < self.next_index or self.stop_index > self.next_index + LOOKAHEAD_WPS:
+            pass
             # rospy.logwarn("Updating waypoints without stop:")
             # rospy.logwarn("stop_active: %s", str(self.stop_active))
             # rospy.logwarn("stop_index: %s", str(self.stop_index))
             # rospy.logwarn("start next_index: %s", str(self.next_index))
-            self.next_waypoints = []
-            for i in range(0, LOOKAHEAD_WPS):
 
-                # if next_index >= len(self.map_waypoints):
-                #     next_index = 0
-                # self.next_waypoints.append(copy.deepcopy(self.map_waypoints[self.next_index + i]))
-                self.next_waypoints.append(self.map_waypoints[self.next_index + i])
+            # for i in range(0, LOOKAHEAD_WPS):
+            #
+            #     # if next_index >= len(self.map_waypoints):
+            #     #     next_index = 0
+            #     # self.next_waypoints.append(copy.deepcopy(self.map_waypoints[self.next_index + i]))
+            #     self.next_waypoints.append(self.map_waypoints[self.next_index + i])
 
         # rospy.logwarn("end next_index: %s", str(self.next_index + i))
         #
         else:
             #get vehicle vel.
             rospy.logwarn("Updating waypoints with stop:")
-            current_wp_vel = self.get_waypoint_velocity(self.map_waypoints[self.next_index])
-            # if self.next_waypoints is not None and len(self.next_waypoints) > 0:
-            #     current_wp_vel = self.get_waypoint_velocity(self.next_waypoints[0])
-            self.next_waypoints = []
-            # target speed of current_index = current_vel
-            # target vel = 0.0, target index =
-            total_stop_distance = self.distance(self.map_waypoints, self.next_index, self.stop_index)
-            number_of_waypoints_to_stop = self.stop_index - self.next_index
-            # rospy.logwarn("current_wp_vel: %s", current_wp_vel)
-            # rospy.logwarn("stop_waypoint: %s", self.stop_index)
-            # rospy.logwarn("next_index: %s", self.next_index)
-            # rospy.logwarn("Total stop distance: %s", total_stop_distance)
-            # rospy.logwarn("number_of_waypoints_to_stop: %s", number_of_waypoints_to_stop)
+            self.slow_down_to_stop()
 
-            for i in range(0, LOOKAHEAD_WPS):
-                # if next_index >= len(self.map_waypoints):
-                #     next_index = 0
-                self.next_waypoints.append(self.map_waypoints[self.next_index + i])
-                waypoint_vel = 0.0
-                if self.next_index + i <= self.stop_index:
-                    remaining_distance_to_stop = self.distance(self.map_waypoints, self.next_index + i, self.stop_index)
-
-                    if float(remaining_distance_to_stop > 1.0):
-                        waypoint_vel = float(current_wp_vel) * float(remaining_distance_to_stop) / float(total_stop_distance)
-                self.set_waypoint_velocity(self.next_waypoints, i, waypoint_vel)
-                rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
-                rospy.logwarn("waypoint_vel: %s", self.get_waypoint_velocity(self.next_waypoints[i]))
+            # current_wp_vel = self.get_waypoint_velocity(self.map_waypoints[self.next_index])
+            # # if self.next_waypoints is not None and len(self.next_waypoints) > 0:
+            # #     current_wp_vel = self.get_waypoint_velocity(self.next_waypoints[0])
+            # self.next_waypoints = []
+            # # target speed of current_index = current_vel
+            # # target vel = 0.0, target index =
+            # number_of_waypoints_to_stop = self.stop_index - EXTRA_BUFFER_STOP - self.next_index
+            # total_stop_distance = self.distance(self.map_waypoints, self.next_index, self.stop_index - EXTRA_BUFFER_STOP)
+            #
+            # # rospy.logwarn("current_wp_vel: %s", current_wp_vel)
+            # # rospy.logwarn("stop_waypoint: %s", self.stop_index)
+            # # rospy.logwarn("next_index: %s", self.next_index)
+            # # rospy.logwarn("Total stop distance: %s", total_stop_distance)
+            # # rospy.logwarn("number_of_waypoints_to_stop: %s", number_of_waypoints_to_stop)
+            #
+            # for i in range(0, LOOKAHEAD_WPS):
+            #     # if next_index >= len(self.map_waypoints):
+            #     #     next_index = 0
+            #
+            #     self.next_waypoints.append(self.map_waypoints[self.next_index + i])
+            #     waypoint_vel = 0.0
+            #     if self.next_index + i <= self.stop_index:
+            #         remaining_distance_to_stop = self.distance(self.map_waypoints, self.next_index + i, self.stop_index)
+            #
+            #         if float(remaining_distance_to_stop > 1.0):
+            #             waypoint_vel = float(current_wp_vel) * float(remaining_distance_to_stop) / float(total_stop_distance)
+            #     self.set_waypoint_velocity(self.next_waypoints, i, waypoint_vel)
+            #     rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
+            #     rospy.logwarn("waypoint_vel: %s", self.get_waypoint_velocity(self.next_waypoints[i]))
 
         # rospy.logwarn("Number of final waypoints: %s", str(len(self.next_waypoints)))
         lane = Lane()
+        lane.header.frame_id = '/world'
+        lane.header.stamp = rospy.Time(0)
         lane.waypoints = self.next_waypoints
 
         self.final_waypoints_pub.publish(lane)
@@ -156,6 +213,9 @@ class WaypointUpdater(object):
         end = rospy.Time.now()
         duration = (end-start).to_sec()
         rospy.logwarn("Duration: %s", str(duration))
+
+    def velocity_cb(self, msg):
+        self.velocity = msg.twist.linear.x
 
     def waypoints_cb(self, waypoints):
         rospy.logwarn("Setting waypoints...")
