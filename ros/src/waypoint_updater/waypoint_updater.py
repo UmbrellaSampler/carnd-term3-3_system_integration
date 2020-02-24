@@ -115,7 +115,7 @@ class WaypointUpdater(object):
             waypoint_vel = self.get_waypoint_velocity(self.map_waypoints[current_index])
             if self.is_smaller_index(current_index, self.stop_index - EXTRA_BUFFER_STOP):
                 remaining_distance_to_stop = self.distance(self.map_waypoints, current_index, self.stop_index - EXTRA_BUFFER_STOP)
-                rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
+                # rospy.logwarn("i: %s, remaining_distance_to_stop: %s", i, remaining_distance_to_stop)
 
                 if float(remaining_distance_to_stop > 1.0):
                     waypoint_vel = min(waypoint_vel, math.sqrt(2*MAX_ACCELERATION*remaining_distance_to_stop))
@@ -128,17 +128,17 @@ class WaypointUpdater(object):
             current_wp.twist.twist.linear.x = waypoint_vel
             self.next_waypoints.append(current_wp)
 
-            rospy.logwarn("waypoint_vel: %s", self.get_waypoint_velocity(self.next_waypoints[i]))
+            # rospy.logwarn("waypoint_vel: %s", self.get_waypoint_velocity(self.next_waypoints[i]))
 
     def update_next_waypoints(self):
 
         self.next_waypoints = []
         for i in range(0, LOOKAHEAD_WPS):
             self.next_waypoints.append(self.map_waypoints[self.index_in_correct_range(self.next_index + i)])
-        rospy.logwarn("Length: %s", len(self.next_waypoints))
+        # rospy.logwarn("Length: %s", len(self.next_waypoints))
 
         if self.is_stop_active():
-            rospy.logwarn("Updating waypoints with stop:")
+            # rospy.logwarn("Updating waypoints with stop:")
             self.slow_down_to_stop()
 
         lane = Lane()
@@ -160,7 +160,7 @@ class WaypointUpdater(object):
             return
 
         if self.next_index != previous_index or self.stop_index_update is True:
-            rospy.logwarn("updating waypoints: ")
+            # rospy.logwarn("updating waypoints: ")
             self.stop_index_update = False
             self.update_next_waypoints()
 
