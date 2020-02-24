@@ -48,10 +48,22 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
+        self.tmp_start_time = None
 
         rospy.spin()
 
     def pose_cb(self, msg):
+        now = rospy.Time.now()
+        light_wp = -1
+        # if self.tmp_start_time is None:
+        #     self.tmp_start_time = now
+        #     light_wp = 500
+        # elif now - self.tmp_start_time < rospy.Duration(35):
+        #     light_wp = 500
+        # else:
+        #     light_wp = -1
+
+        self.upcoming_red_light_pub.publish(Int32(light_wp))
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
