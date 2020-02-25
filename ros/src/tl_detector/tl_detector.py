@@ -121,6 +121,7 @@ class TLDetector(object):
             print("skipping image")
 
         self.num_images_skipped = self.num_images_skipped + 1
+
     def get_closest_waypoint(self, pose_x, pose_y):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
