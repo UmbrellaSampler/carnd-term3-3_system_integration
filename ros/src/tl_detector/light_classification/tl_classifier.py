@@ -5,21 +5,24 @@ import datetime
 
 
 class TLClassifier(object):
-    def __init__(self, is_sim):
-
-        if is_sim:
-            PATH_TO_GRAPH = r'light_classification/trained_model/ssd_inception_v2_coco_2017_11_17/sim/frozen_inference_graph.pb'
-        else:
-            PATH_TO_GRAPH = r'light_classification/trained_model/ssd_inception_v2_coco_2017_11_17/site/frozen_inference_graph.pb'
+    def __init__(self, is_site):
 
         self.graph = tf.Graph()
+
+        # Threshold about how confident we need to be to trust the classification
         self.threshold = .5
 
+        # Choose the right model graph: simulation or site
+        if is_site:
+            model_graph = r'light_classification/trained_model/ssd_inception_v2_coco_2017_11_17/site/frozen_inference_graph.pb'
+        else:
+            model_graph = r'light_classification/trained_model/ssd_inception_v2_coco_2017_11_17/sim/frozen_inference_graph.pb'
+
         with self.graph.as_default():
-            od_graph_def = tf.GraphDef()
-            with tf.gfile.GFile(PATH_TO_GRAPH, 'rb') as fid:
-                od_graph_def.ParseFromString(fid.read())
-                tf.import_graph_def(od_graph_def, name='')
+            graph_def = tf.GraphDef()
+            with tf.gfile.GFile(model_graph, 'rb') as file:
+                graph_def.ParseFromString(file.read())
+                tf.import_graph_def(graph_def, name='')
 
             self.image_tensor = self.graph.get_tensor_by_name('image_tensor:0')
             self.boxes = self.graph.get_tensor_by_name('detection_boxes:0')
@@ -41,31 +44,30 @@ class TLClassifier(object):
 
         """
         with self.graph.as_default():
-            img_expand = np.expand_dims(image, axis=0)
+            img_conv = np.expand_dims(image, axis=0)
             start = datetime.datetime.now()
             (boxes, scores, classes, num_detections) = self.sess.run(
                 [self.boxes, self.scores, self.classes, self.num_detections],
-                feed_dict={self.image_tensor: img_expand})
+                feed_dict={self.image_tensor: img_conv})
             end = datetime.datetime.now()
             c = end - start
             print(c.total_seconds())
 
-        boxes = np.squeeze(boxes)
-        scores = np.squeeze(scores)
-        classes = np.squeeze(classes).astype(np.int32)
+        score = np.squeeze(scores)[0]
+        clazz = np.squeeze(classes).astype(np.int32)[0]
 
-        print('SCORES: ', scores[0])
-        print('CLASSES: ', classes[0])
+        print('SCORES: ', score)
+        print('CLASSES: ', clazz)
 
-        if scores[0] > self.threshold:
-            if classes[0] == 1:
-                print('GREEN')
+        if score> self.threshold:
+            if clazz == 1:
+                print('green')
                 return TrafficLight.GREEN
-            elif classes[0] == 2:
-                print('RED')
+            elif clazz == 2:
+                print('red')
                 return TrafficLight.RED
-            elif classes[0] == 3:
-                print('YELLOW')
+            elif clazz == 3:
+                print('yellow')
                 return TrafficLight.YELLOW
 
         return TrafficLight.UNKNOWN
