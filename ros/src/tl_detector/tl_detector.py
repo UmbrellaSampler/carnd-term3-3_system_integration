@@ -100,7 +100,7 @@ class TLDetector(object):
 
         # process only every NUM_SKIP_CAMERA_IMAGES image
         if self.num_images_skipped == NUM_SKIP_CAMERA_IMAGES:
-            self.num_images_skipped = 0;
+            self.num_images_skipped = 0
 
         if self.num_images_skipped == 0:
             print("process image")
