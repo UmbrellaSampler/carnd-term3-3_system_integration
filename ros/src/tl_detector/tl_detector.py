@@ -99,10 +99,10 @@ class TLDetector(object):
         '''
 
         # process only every NUM_SKIP_CAMERA_IMAGES image
-        if self.num_images_skipped is NUM_SKIP_CAMERA_IMAGES:
-            self.num_images_skipped = 0;
+        if self.num_images_skipped == NUM_SKIP_CAMERA_IMAGES:
+            self.num_images_skipped = 0
 
-        if self.num_images_skipped is 0:
+        if self.num_images_skipped == 0:
             print("process image")
             light_wp, state = self.process_traffic_lights()
             print("light_wp=", light_wp, " state=", state)
@@ -119,7 +119,8 @@ class TLDetector(object):
             self.state_count += 1
         else:
             print("skipping image")
-            self.num_images_skipped = self.num_images_skipped + 1
+        
+        self.num_images_skipped = self.num_images_skipped + 1
 
     def get_closest_waypoint(self, pose_x, pose_y):
         """Identifies the closest path waypoint to the given position
