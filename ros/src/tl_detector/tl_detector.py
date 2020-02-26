@@ -12,8 +12,18 @@ import cv2
 import yaml
 from scipy.spatial import KDTree
 
-STATE_COUNT_THRESHOLD = 3
-NUM_SKIP_CAMERA_IMAGES = 4
+STATE_COUNT_THRESHOLD = 2
+NUM_SKIP_CAMERA_IMAGES = 2
+
+def print_state(state):
+    if state == TrafficLight.UNKNOWN:
+        return "UNKNOWN"
+    elif state == TrafficLight.RED:
+        return "RED"
+    elif state == TrafficLight.YELLOW:
+        return "YELLOW"
+    elif state == TrafficLight.GREEN:
+        return "GREEN"
 
 class TLDetector(object):
     def __init__(self):
@@ -49,33 +59,17 @@ class TLDetector(object):
         self.light_classifier = TLClassifier(self.is_site)
         self.listener = tf.TransformListener()
 
-        self.state = TrafficLight.UNKNOWN
-        self.last_state = TrafficLight.UNKNOWN
+        self.state = TrafficLight.RED
+        self.last_state = TrafficLight.RED
         self.last_wp = -1
-        self.state_count = 0
+        self.state_count = STATE_COUNT_THRESHOLD
         self.tmp_start_time = None
 
         self.num_images_skipped = 0
 
-        self.spin()
-
-    def spin(self):
-        rate = rospy.Rate(10)
-        while not rospy.is_shutdown():
-            rate.sleep()
+        rospy.spin()
 
     def pose_cb(self, msg):
-        now = rospy.Time.now()
-        light_wp = -1
-        # if self.tmp_start_time is None:
-        #     self.tmp_start_time = now
-        #     light_wp = 500
-        # elif now - self.tmp_start_time < rospy.Duration(35):
-        #     light_wp = 500
-        # else:
-        #     light_wp = -1
-
-        self.upcoming_red_light_pub.publish(Int32(light_wp))
         self.pose = msg
 
     # Extracts the x and y coordinates of a waypoint
@@ -115,9 +109,9 @@ class TLDetector(object):
             self.num_images_skipped = 0
 
         if self.num_images_skipped == 0:
-            print("process image")
             light_wp, state = self.process_traffic_lights()
-            print("light_wp=", light_wp, " state=", state)
+            # print("light_wp=", light_wp, " state=", print_state(state))
+            # print("light_wp=", light_wp, " last_state=", print_state(self.last_state))
             if self.state != state:
                 self.state_count = 0
                 self.state = state
@@ -129,8 +123,8 @@ class TLDetector(object):
             else:
                 self.upcoming_red_light_pub.publish(Int32(self.last_wp))
             self.state_count += 1
-        else:
-            print("skipping image")
+        # else:
+        #     print("skipping image")
 
         self.num_images_skipped = self.num_images_skipped + 1
 
@@ -141,7 +135,6 @@ class TLDetector(object):
         Returns:
             int: index of the closest waypoint in self.waypoints
         """
-        #Use KDTree to search through waypoints
         closest_idx = self.waypoints_tree.query([pose_x, pose_y], 1)[1]
         return closest_idx
 
@@ -207,8 +200,4 @@ if __name__ == '__main__':
     try:
         TLDetector()
     except rospy.ROSInterruptException:
-        rospy.logerr('Could not start traffic node.')
-
-#TODO
-#1. find out index for tl
-#2. publish stub message until time, then empty stub message
+        rospy.logerr('Could not start traffic node.')q
