@@ -10,7 +10,7 @@ class TLClassifier(object):
         self.graph = tf.Graph()
 
         # Threshold about how confident we need to be to trust the classification
-        self.threshold = .5
+        self.threshold = 0.25
 
         # Choose the right model graph: simulation or site
         if is_site:
@@ -56,18 +56,16 @@ class TLClassifier(object):
         score = np.squeeze(scores)[0]
         clazz = np.squeeze(classes).astype(np.int32)[0]
 
-        print('SCORES: ', score)
-        print('CLASSES: ', clazz)
+        # print("scores:", scores)
+        # print("classes:", classes)
+        # print("num_detections:", num_detections)
 
-        if score> self.threshold:
+        if score > self.threshold:
             if clazz == 1:
-                print('green')
                 return TrafficLight.GREEN
             elif clazz == 2:
-                print('red')
                 return TrafficLight.RED
             elif clazz == 3:
-                print('yellow')
                 return TrafficLight.YELLOW
 
         return TrafficLight.UNKNOWN
