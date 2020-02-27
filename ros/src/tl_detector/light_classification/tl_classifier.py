@@ -51,7 +51,7 @@ class TLClassifier(object):
                 feed_dict={self.image_tensor: img_conv})
             end = datetime.datetime.now()
             c = end - start
-            print(c.total_seconds())
+            # print(c.total_seconds())
 
         score = np.squeeze(scores)[0]
         clazz = np.squeeze(classes).astype(np.int32)[0]

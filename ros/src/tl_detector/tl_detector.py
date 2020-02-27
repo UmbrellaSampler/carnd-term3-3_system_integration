@@ -200,4 +200,4 @@ if __name__ == '__main__':
     try:
         TLDetector()
     except rospy.ROSInterruptException:
-        rospy.logerr('Could not start traffic node.')q
+        rospy.logerr('Could not start traffic node.')
